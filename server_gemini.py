@@ -108,7 +108,7 @@ async def grammar_check(request: GrammarRequest):
     """
     Grammar Checker endpoint - corrects grammar and improves text quality
     """
-    prompt = f"""Please correct the grammar and improve the following text while maintaining its original meaning and style. Return only the corrected text without any explanations or additional formatting:
+    prompt = f"""Please correct the grammar of the following text. It is very important that you preserve the original letter casing (uppercase and lowercase). Only fix grammar mistakes, without altering the casing. Return only the corrected text without any explanations or additional formatting:
 
 Text to correct: {request.text}"""
     
