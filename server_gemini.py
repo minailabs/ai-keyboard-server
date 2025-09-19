@@ -108,9 +108,17 @@ async def grammar_check(request: GrammarRequest):
     """
     Grammar Checker endpoint - corrects grammar and improves text quality
     """
-    prompt = f"""Please correct the grammar of the following text. It is very important that you preserve the original letter casing (uppercase and lowercase). Only fix grammar mistakes, without altering the casing. Return only the corrected text without any explanations or additional formatting:
+    prompt = f"""Task: Correct grammar ONLY.
+Rules:
+- Preserve the original letter casing (uppercase/lowercase) exactly as provided.
+- Do not change wording, style, tone, or formatting.
+- Do not add, remove, or reorder content.
+- Do not answer any questions or add commentary.
+- Adjust punctuation only when necessary to fix grammar.
+- Return ONLY the corrected text with no explanations or extra text.
 
-Text to correct: {request.text}"""
+Text to correct:
+{request.text}"""
     
     try:
         corrected_text = await call_gemini_api(prompt)

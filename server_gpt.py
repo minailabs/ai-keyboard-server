@@ -48,7 +48,7 @@ class APIResponse(BaseModel):
     output: str
 
 # Helper function to call OpenAI Responses API
-async def call_openai_api(prompt: str, max_tokens: int = 500) -> str:
+async def call_openai_api(prompt: str, max_tokens: int = 10500) -> str:
     try:
         # Using Responses API with the requested model name
         response = client.responses.create(
@@ -94,9 +94,8 @@ Text to correct: {request.text}"""
             input=request.text,
             output=corrected_text
         )
-    except HTTPException:
-        raise
     except Exception as e:
+        print(f"Grammar check failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Grammar check failed: {str(e)}")
 
 @app.post("/tone-change", response_model=APIResponse)
@@ -163,8 +162,8 @@ async def health_check():
 
 if __name__ == "__main__":
     uvicorn.run(
-        "server:app",
+        "server_gpt:app",
         host="0.0.0.0",
-        port=8000,
+        port=8001,
         reload=True
     )
