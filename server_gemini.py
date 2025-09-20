@@ -249,9 +249,13 @@ async def continue_text(request: ContinueTextRequest):
     """
     Continue Text endpoint - continues the given text.
     """
-    prompt = f"Please continue writing the following text, picking up where it leaves off. Return only the continued part of the text:\n\n{request.text}"
+    prompt = (
+        f"Please continue writing the following text, picking up where it leaves off. "
+        f"Limit the continuation to at most 3 sentences (prefer 2–3). "
+        f"Return only the continued part of the text.\n\n{request.text}"
+    )
     try:
-        continued_text = await call_gemini_api(prompt, temperature=0.85)
+        continued_text = await call_gemini_api(prompt, max_tokens=120, temperature=0.85)
         return APIResponse(status="success", input=request.text, output=continued_text)
     except HTTPException:
         raise
