@@ -1,10 +1,11 @@
 import os
+import json
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from google import genai
 from google.genai import types
-from typing import Optional
+from typing import Optional, Any
 import uvicorn
 from dotenv import load_dotenv
 
@@ -62,7 +63,7 @@ class FindSynonymRequest(BaseModel):
 class APIResponse(BaseModel):
     status: str
     input: str
-    output: str
+    output: Any
 
 # List of supported languages for translation
 supported_languages = {
@@ -75,18 +76,27 @@ supported_languages = {
 }
 
 # Helper function to call Google Gemini API
-async def call_gemini_api(prompt: str, max_tokens: int = 500, temperature: float = 0.2) -> str:
+async def call_gemini_api(
+    prompt: str,
+    max_tokens: int = 500,
+    temperature: float = 0.2,
+    response_mime_type: Optional[str] = None,
+) -> str:
     try:
         client = genai.Client(api_key=GEMINI_API_KEY)
         
+        config_params = {
+            "temperature": temperature,
+            "max_output_tokens": max_tokens,
+        }
+        if response_mime_type:
+            config_params["response_mime_type"] = response_mime_type
+
         response = client.models.generate_content(
-                model=GEMINI_MODEL,
-                contents=[prompt],
-                config=types.GenerateContentConfig(
-                    temperature=temperature,
-                    max_output_tokens=max_tokens
-                )
-            )
+            model=GEMINI_MODEL,
+            contents=[prompt],
+            config=types.GenerateContentConfig(**config_params)
+        )
         if response.text:
             return response.text.strip()
         raise RuntimeError("Empty response from Gemini API")
@@ -262,15 +272,33 @@ async def continue_text(request: ContinueTextRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Text continuation failed: {str(e)}")
 
-@app.post("/find-synonym", response_model=APIResponse)
+@app.post("/find-synonyms", response_model=APIResponse)
 async def find_synonym(request: FindSynonymRequest):
     """
     Find Synonym endpoint - finds synonyms for the given word.
     """
-    prompt = f"Please provide a single synonym for the following word or text. Return only the synonym:\n\n{request.text}"
+    prompt = (
+        "Return ONLY JSON (no code fences, no extra text). "
+        'Schema: {"synonyms": ["string", ...]}.'
+        " Provide 2–4 high-quality synonyms for the following word or short phrase.\n\n"
+        f"{request.text}"
+    )
     try:
-        synonyms = await call_gemini_api(prompt, temperature=0.2)
-        return APIResponse(status="success", input=request.text, output=synonyms)
+        raw = await call_gemini_api(
+            prompt,
+            temperature=0.2,
+            response_mime_type="application/json",
+            max_tokens=200,
+        )
+        try:
+            data = json.loads(raw)
+            synonyms_list = data.get("synonyms", [])
+            if not isinstance(synonyms_list, list):
+                synonyms_list = [str(synonyms_list)]
+        except Exception:
+            # Fallback: try to parse as comma-separated list
+            synonyms_list = [s.strip() for s in raw.split(",") if s.strip()]
+        return APIResponse(status="success", input=request.text, output=synonyms_list)
     except HTTPException:
         raise
     except Exception as e:
