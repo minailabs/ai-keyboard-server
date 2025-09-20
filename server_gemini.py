@@ -277,11 +277,14 @@ async def find_synonym(request: FindSynonymRequest):
     """
     Find Synonym endpoint - finds synonyms for the given word.
     """
+    # If more than 10 words are provided, only use the most recent 10 words
+    words = request.text.split()
+    processed_text = " ".join(words[-10:]) if len(words) > 10 else request.text
     prompt = (
         "Return ONLY JSON (no code fences, no extra text). "
-        'Schema: {"synonyms": ["string", ...]}.'
+        'JSON Format: {"synonyms": ["string1", "string2"]}.'
         " Provide 2–4 high-quality synonyms for the following word or short phrase.\n\n"
-        f"{request.text}"
+        f"{processed_text}"
     )
     try:
         raw = await call_gemini_api(
@@ -295,9 +298,10 @@ async def find_synonym(request: FindSynonymRequest):
             synonyms_list = data.get("synonyms", [])
             if not isinstance(synonyms_list, list):
                 synonyms_list = [str(synonyms_list)]
-        except Exception:
+        except Exception as e:
             # Fallback: try to parse as comma-separated list
-            synonyms_list = [s.strip() for s in raw.split(",") if s.strip()]
+            # synonyms_list = [s.strip() for s in raw.split(",") if s.strip()]
+            raise HTTPException(status_code=500, detail=f"Synonym search failed: {str(e)}")
         return APIResponse(status="success", input=request.text, output=synonyms_list)
     except HTTPException:
         raise
