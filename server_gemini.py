@@ -75,7 +75,7 @@ supported_languages = {
 }
 
 # Helper function to call Google Gemini API
-async def call_gemini_api(prompt: str, max_tokens: int = 500) -> str:
+async def call_gemini_api(prompt: str, max_tokens: int = 500, temperature: float = 0.2) -> str:
     try:
         client = genai.Client(api_key=GEMINI_API_KEY)
         
@@ -83,7 +83,7 @@ async def call_gemini_api(prompt: str, max_tokens: int = 500) -> str:
                 model=GEMINI_MODEL,
                 contents=[prompt],
                 config=types.GenerateContentConfig(
-                    temperature=0.2,
+                    temperature=temperature,
                     max_output_tokens=max_tokens
                 )
             )
@@ -121,7 +121,7 @@ Text to correct:
 {request.text}"""
     
     try:
-        corrected_text = await call_gemini_api(prompt)
+        corrected_text = await call_gemini_api(prompt, temperature=0.1)
         return APIResponse(
             status="success",
             input=request.text,
@@ -157,7 +157,7 @@ Original text: {request.text}
 Requested tone: {request.tone}"""
     
     try:
-        rephrased_text = await call_gemini_api(prompt)
+        rephrased_text = await call_gemini_api(prompt, temperature=0.8)
         return APIResponse(
             status="success",
             input=request.text,
@@ -178,7 +178,7 @@ async def ask_ai(request: AskAIRequest):
 User query: {request.text}"""
     
     try:
-        ai_response = await call_gemini_api(prompt, max_tokens=800)
+        ai_response = await call_gemini_api(prompt, max_tokens=800, temperature=0.6)
         return APIResponse(
             status="success",
             input=request.text,
@@ -205,7 +205,7 @@ async def translate(request: TranslateRequest):
 Text to translate: {request.text}"""
 
     try:
-        translated_text = await call_gemini_api(prompt)
+        translated_text = await call_gemini_api(prompt, temperature=0.2)
         return APIResponse(
             status="success",
             input=request.text,
@@ -223,7 +223,7 @@ async def paraphrase(request: ParaphraseRequest):
     """
     prompt = f"Please paraphrase the following text, expressing the same meaning in a different way. Return only the paraphrased text:\n\n{request.text}"
     try:
-        paraphrased_text = await call_gemini_api(prompt)
+        paraphrased_text = await call_gemini_api(prompt, temperature=0.8)
         return APIResponse(status="success", input=request.text, output=paraphrased_text)
     except HTTPException:
         raise
@@ -237,7 +237,7 @@ async def reply(request: ReplyRequest):
     """
     prompt = f"Please generate a conversational reply to the following text. Return only the reply text:\n\n{request.text}"
     try:
-        reply_text = await call_gemini_api(prompt)
+        reply_text = await call_gemini_api(prompt, temperature=0.9)
         return APIResponse(status="success", input=request.text, output=reply_text)
     except HTTPException:
         raise
@@ -251,7 +251,7 @@ async def continue_text(request: ContinueTextRequest):
     """
     prompt = f"Please continue writing the following text, picking up where it leaves off. Return only the continued part of the text:\n\n{request.text}"
     try:
-        continued_text = await call_gemini_api(prompt)
+        continued_text = await call_gemini_api(prompt, temperature=0.85)
         return APIResponse(status="success", input=request.text, output=continued_text)
     except HTTPException:
         raise
@@ -265,7 +265,7 @@ async def find_synonym(request: FindSynonymRequest):
     """
     prompt = f"Please provide a single synonym for the following word or text. Return only the synonym:\n\n{request.text}"
     try:
-        synonyms = await call_gemini_api(prompt)
+        synonyms = await call_gemini_api(prompt, temperature=0.2)
         return APIResponse(status="success", input=request.text, output=synonyms)
     except HTTPException:
         raise
