@@ -330,9 +330,9 @@ async def chat_ai(request: ChatAIRequest):
         # Format history for Gemini chat
         formatted_history = []
         for msg in request.history_messages:
-            # Access dictionary keys instead of object attributes
-            role = "user" if msg['role'] == "user" else "model"
-            content = msg['content']
+            # Pydantic models are being correctly created, so use attribute access.
+            role = "user" if msg.role == "user" else "model"
+            content = msg.content
             formatted_history.append({
                 "role": role,
                 "parts": [{"text": content}]
