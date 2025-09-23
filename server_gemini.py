@@ -347,12 +347,12 @@ async def chat_ai(request: ChatAIRequest):
 
         text = resp.text if hasattr(resp, "text") else ""
         if not text:
+            print("Empty response from chat API")
             raise HTTPException(status_code=500, detail="Empty response from chat API")
 
         return APIResponse(status="success", input=request.new_message, output=text.strip())
-    except HTTPException:
-        raise
     except Exception as e:
+        print(f"Chat AI failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Chat AI failed: {str(e)}")
 
 @app.get("/health")
