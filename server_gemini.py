@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from google import genai
 from google.genai import types
-from typing import Optional, Any
+from typing import Optional, Any, List
 import uvicorn
 from dotenv import load_dotenv
 
@@ -64,6 +64,16 @@ class APIResponse(BaseModel):
     status: str
     input: str
     output: Any
+
+# Chat models
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+class ChatAIRequest(BaseModel):
+    history_messages: List[ChatMessage]
+    new_message: str
+    system_prompt: Optional[str] = None
 
 # List of supported languages for translation
 supported_languages = {
@@ -307,6 +317,43 @@ async def find_synonym(request: FindSynonymRequest):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Synonym search failed: {str(e)}")
+
+@app.post("/chat-ai", response_model=APIResponse)
+async def chat_ai(request: ChatAIRequest):
+    """Chat endpoint using Gemini chat API with history support."""
+    try:
+        client = genai.Client(api_key=GEMINI_API_KEY)
+
+        system_prompt = """You are a helpful assistant. You are able to answer questions and help with tasks. """
+        # Format history for Gemini chat: roles must be 'user' or 'model'
+        formatted_history = []
+        for msg in request.history_messages:
+            role = "user" if msg.role == "user" else "model"
+            content = msg.content
+            formatted_history.append({
+                "role": role,
+                "parts": [{"text": content}]
+            })
+
+        chat = client.chats.create(
+            model=GEMINI_MODEL,
+            config=types.GenerateContentConfig(
+                system_instruction=system_prompt,
+                temperature=0.2,
+            ),
+            history=formatted_history
+        )
+        resp =chat.send_message(request.new_message)
+
+        text = resp.text if hasattr(resp, "text") else ""
+        if not text:
+            raise HTTPException(status_code=500, detail="Empty response from chat API")
+
+        return APIResponse(status="success", input=request.new_message, output=text.strip())
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Chat AI failed: {str(e)}")
 
 @app.get("/health")
 async def health_check():
