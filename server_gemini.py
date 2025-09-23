@@ -333,16 +333,12 @@ async def chat_ai(request: ChatAIRequest):
         
         formatted_history = []
         for i, msg in enumerate(history_to_process):
-            print(f"Processing message {i}: type={type(msg)}")
-            
             # Since debug shows these are HistoryMessage objects, use direct access
             role = "user" if msg.role == "user" else "model"
             content = msg.content
             
-            formatted_history.append({
-                "role": role,
-                "parts": [{"text": content}]
-            })
+            # Construct Content objects for the history, which the library expects
+            formatted_history.append(types.Content(role=role, parts=[types.Part(text=content)]))
             
         print(f"Formatted {len(formatted_history)} messages for history")
 
@@ -362,7 +358,7 @@ async def chat_ai(request: ChatAIRequest):
 
         return APIResponse(status="success", input=request.new_message, output=text.strip())
     except Exception as e:
-        traceback.print_exc(e)
+        traceback.print_exc()
         print(f"Chat AI failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Chat AI failed: {str(e)}")
 
