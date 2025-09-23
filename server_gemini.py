@@ -327,38 +327,23 @@ async def chat_ai(request: ChatAIRequest):
         
         system_prompt = "You are a helpful assistant. You are able to answer questions and help with tasks."
         
-        # Format history for Gemini chat
+        # Format history for Gemini chat (remove the last message as always)
+        history_to_process = request.history_messages[:-1] if request.history_messages else []
+        
         formatted_history = []
-        for i, msg in enumerate(request.history_messages):
-            print(f"Message {i}: type={type(msg)}, value={msg}")
+        for i, msg in enumerate(history_to_process):
+            print(f"Processing message {i}: type={type(msg)}")
             
-            # Handle both HistoryMessage objects and dictionaries more robustly
-            try:
-                if hasattr(msg, 'role') and hasattr(msg, 'content'):
-                    # It's a HistoryMessage object
-                    role = "user" if msg.role == "user" else "model"
-                    content = msg.content
-                elif isinstance(msg, dict):
-                    # It's a dictionary
-                    role = "user" if msg.get('role') == "user" else "model"
-                    content = msg.get('content', '')
-                else:
-                    # Try to access as dict first, then as object
-                    try:
-                        role = "user" if msg['role'] == "user" else "model"
-                        content = msg['content']
-                    except (KeyError, TypeError):
-                        role = "user" if msg.role == "user" else "model"
-                        content = msg.content
-                
-                formatted_history.append({
-                    "role": role,
-                    "parts": [{"text": content}]
-                })
-            except Exception as e:
-                print(f"Error processing message {i}: {e}")
-                print(f"Message details: {dir(msg)}")
-                raise
+            # Since debug shows these are HistoryMessage objects, use direct access
+            role = "user" if msg.role == "user" else "model"
+            content = msg.content
+            
+            formatted_history.append({
+                "role": role,
+                "parts": [{"text": content}]
+            })
+            
+        print(f"Formatted {len(formatted_history)} messages for history")
 
         chat = client.chats.create(
             model=GEMINI_MODEL,
