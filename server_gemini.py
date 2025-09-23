@@ -8,6 +8,7 @@ from google.genai import types
 from typing import Optional, Any, List
 import uvicorn
 from dotenv import load_dotenv
+import traceback
 
 load_dotenv()
 
@@ -361,6 +362,7 @@ async def chat_ai(request: ChatAIRequest):
 
         return APIResponse(status="success", input=request.new_message, output=text.strip())
     except Exception as e:
+        traceback.print_exc(e)
         print(f"Chat AI failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Chat AI failed: {str(e)}")
 
