@@ -73,11 +73,6 @@ class ChatAIRequest(BaseModel):
     history_messages: List[HistoryMessage]
     new_message: str
 
-class APIResponse(BaseModel):
-    status: str
-    input: str
-    output: str
-
 # List of supported languages for translation
 supported_languages = {
     "Afrikaans": "af", "Arabic": "ar", "Bengali": "bn", "Chinese (Simplified)": "zh-CN",
@@ -335,9 +330,9 @@ async def chat_ai(request: ChatAIRequest):
         # Format history for Gemini chat
         formatted_history = []
         for msg in request.history_messages:
-            # Because of the Pydantic models, msg.role and msg.content will now work correctly.
-            role = "user" if msg.role == "user" else "model"
-            content = msg.content
+            # Access dictionary keys instead of object attributes
+            role = "user" if msg['role'] == "user" else "model"
+            content = msg['content']
             formatted_history.append({
                 "role": role,
                 "parts": [{"text": content}]
@@ -360,8 +355,6 @@ async def chat_ai(request: ChatAIRequest):
         return APIResponse(status="success", input=request.new_message, output=text.strip())
     except Exception as e:
         print(f"Chat AI failed: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Chat AI failed: {str(e)}")
-
         raise HTTPException(status_code=500, detail=f"Chat AI failed: {str(e)}")
 
 @app.get("/health")
