@@ -325,6 +325,9 @@ async def find_synonym(request: FindSynonymRequest):
 async def chat_ai(request: ChatAIRequest):
     """Chat endpoint using Gemini chat API with history support."""
     try:
+        print(request.history_messages)
+        print(request.new_message)
+
         client = genai.Client(api_key=GEMINI_API_KEY)
         
         system_prompt = "You are a helpful assistant. You are able to answer questions and help with tasks."
