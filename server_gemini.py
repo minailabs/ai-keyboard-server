@@ -65,15 +65,18 @@ class APIResponse(BaseModel):
     input: str
     output: Any
 
-# Chat models
-class ChatMessage(BaseModel):
+class HistoryMessage(BaseModel):
     role: str
     content: str
 
 class ChatAIRequest(BaseModel):
-    history_messages: List[ChatMessage]
+    history_messages: List[HistoryMessage]
     new_message: str
-    system_prompt: Optional[str] = None
+
+class APIResponse(BaseModel):
+    status: str
+    input: str
+    output: str
 
 # List of supported languages for translation
 supported_languages = {
@@ -323,12 +326,13 @@ async def chat_ai(request: ChatAIRequest):
     """Chat endpoint using Gemini chat API with history support."""
     try:
         client = genai.Client(api_key=GEMINI_API_KEY)
-        print(request.history_messages)
-        print(request.new_message)
-        system_prompt = """You are a helpful assistant. You are able to answer questions and help with tasks. """
-        # Format history for Gemini chat: roles must be 'user' or 'model'
+        
+        system_prompt = "You are a helpful assistant. You are able to answer questions and help with tasks."
+        
+        # Format history for Gemini chat
         formatted_history = []
         for msg in request.history_messages:
+            # Because of the Pydantic models, msg.role and msg.content will now work correctly.
             role = "user" if msg.role == "user" else "model"
             content = msg.content
             formatted_history.append({
@@ -344,16 +348,17 @@ async def chat_ai(request: ChatAIRequest):
             ),
             history=formatted_history
         )
-        resp =chat.send_message(request.new_message)
+        resp = chat.send_message(request.new_message)
 
         text = resp.text if hasattr(resp, "text") else ""
         if not text:
-            print("Empty response from chat API")
             raise HTTPException(status_code=500, detail="Empty response from chat API")
 
         return APIResponse(status="success", input=request.new_message, output=text.strip())
     except Exception as e:
         print(f"Chat AI failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Chat AI failed: {str(e)}")
+
         raise HTTPException(status_code=500, detail=f"Chat AI failed: {str(e)}")
 
 @app.get("/health")
