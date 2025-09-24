@@ -326,7 +326,7 @@ async def chat_ai(request: ChatAIRequest):
 
         client = genai.Client(api_key=GEMINI_API_KEY)
         
-        system_prompt = "You are a helpful assistant. You are able to answer questions and help with tasks. Keep your answers concise, with a maximum of 10 sentences."
+        system_prompt = "You are a helpful assistant. You are able to answer questions and help with tasks. Keep your answers concise."
         
         # Format history for Gemini chat (remove the last message as always)
         history_to_process = request.history_messages[:-1] if request.history_messages else []
