@@ -347,7 +347,7 @@ async def chat_ai(request: ChatAIRequest):
             config=types.GenerateContentConfig(
                 system_instruction=system_prompt,
                 temperature=0.2,
-                max_output_tokens=500,
+                max_output_tokens=300,
             ),
             history=formatted_history
         )
