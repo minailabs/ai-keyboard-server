@@ -375,7 +375,17 @@ async def chat_ai(request: ChatAIRequest):
 async def content_generate(request: ContentGenerationRequest):
     """Generate content (email or text message) based on user instructions."""
     try:
+        # Debug: log incoming payload
+        try:
+            print("/content-generate payload:", request.model_dump())
+        except Exception:
+            try:
+                print("/content-generate payload (fallback):", request.__dict__)
+            except Exception:
+                pass
+
         if request.output_language not in supported_languages:
+            print(f"/content-generate invalid language: {request.output_language}")
             raise HTTPException(
                 status_code=400,
                 detail=f"Invalid language. Please choose from: {', '.join(supported_languages.keys())}"
@@ -383,6 +393,7 @@ async def content_generate(request: ContentGenerationRequest):
 
         text_type_key = request.text_type.lower().strip()
         if text_type_key not in {"email", "text message"}:
+            print(f"/content-generate invalid text_type: {request.text_type}")
             raise HTTPException(status_code=400, detail="text_type must be 'email' or 'text message'")
 
         length_map = {
@@ -392,6 +403,7 @@ async def content_generate(request: ContentGenerationRequest):
         }
         length_key = request.length.lower().strip()
         if length_key not in length_map:
+            print(f"/content-generate invalid length: {request.length}")
             raise HTTPException(status_code=400, detail="Invalid length. Use one of: short, medium, long")
 
         if text_type_key == "email":
@@ -418,11 +430,19 @@ async def content_generate(request: ContentGenerationRequest):
                 f"- Return only the message text (no greetings, no signatures, no extra commentary).\n"
             )
 
+        # Debug: optionally log a shortened prompt
+        try:
+            preview = (prompt[:300] + "...") if len(prompt) > 300 else prompt
+            print("/content-generate prompt preview:", preview)
+        except Exception:
+            pass
+
         generated = await call_gemini_api(prompt, max_tokens=1000, temperature=0.7)
         return APIResponse(status="success", input=request.user_input, output=generated)
     except HTTPException:
         raise
     except Exception as e:
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Content generation failed: {str(e)}")
 
 @app.get("/health")
