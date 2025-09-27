@@ -415,50 +415,38 @@ async def content_generate(request: ContentGenerationRequest):
         if text_type_key == "email":
             if text_action_key == "new":
                 prompt = (
-                    f"You are composing a new email. Follow these rules strictly.\n"
-                    f"- Write in: {request.output_language}.\n"
-                    f"- Desired length: {request.length.title()} ({length_map[length_key]}).\n"
-                    f"- Writing tone: {request.writing_tone}.\n"
-                    f"- Voice: {request.voice}.\n"
-                    f"- Base the content on: \"{request.user_input}\".\n"
-                    f"- Return only the email content with this exact structure (no extra commentary):\n"
-                    f"Subject: <concise subject>\n"
-                    f"Body:\n<email body>\n"
+                    "Return ONLY JSON (no code fences, no extra text). "
+                    'JSON Format: {"subject": "string", "body": "string"}. '\
+                    f"Write an email in {request.output_language} with {request.length.title()} length ({length_map[length_key]}), "
+                    f"tone {request.writing_tone}, voice {request.voice}. "
+                    f"Base the content on: \"{request.user_input}\"."
                 )
             else:
                 # reply
                 prompt = (
-                    f"You are replying to an email. Follow these rules strictly.\n"
-                    f"- Write in: {request.output_language}.\n"
-                    f"- Desired length: {request.length.title()} ({length_map[length_key]}).\n"
-                    f"- Writing tone: {request.writing_tone}.\n"
-                    f"- Voice: {request.voice}.\n"
-                    f"- Reply to the following message: \"{request.user_input}\".\n"
-                    f"- Return only the reply with this exact structure (no extra commentary):\n"
-                    f"Subject: Re: <concise subject>\n"
-                    f"Body:\n<email body>\n"
+                    "Return ONLY JSON (no code fences, no extra text). "
+                    'JSON Format: {"subject": "string", "body": "string"}. '
+                    f"Write an email reply in {request.output_language} with {request.length.title()} length ({length_map[length_key]}), "
+                    f"tone {request.writing_tone}, voice {request.voice}. "
+                    f"Reply to: \"{request.user_input}\"."
                 )
         else:
             # text message
             if text_action_key == "new":
                 prompt = (
-                    f"You are composing a text message. Follow these rules strictly.\n"
-                    f"- Write in: {request.output_language}.\n"
-                    f"- Desired length: {request.length.title()} ({length_map[length_key]}).\n"
-                    f"- Writing tone: {request.writing_tone}.\n"
-                    f"- Voice: {request.voice}.\n"
-                    f"- Base the content on: \"{request.user_input}\".\n"
-                    f"- Return only the message text (no greetings, no signatures, no extra commentary).\n"
+                    "Return ONLY JSON (no code fences, no extra text). "
+                    'JSON Format: {"response": "string"}. '
+                    f"Write a text message in {request.output_language} with {request.length.title()} length ({length_map[length_key]}), "
+                    f"tone {request.writing_tone}, voice {request.voice}. "
+                    f"Base the content on: \"{request.user_input}\"."
                 )
             else:
                 prompt = (
-                    f"You are replying to a text message. Follow these rules strictly.\n"
-                    f"- Write in: {request.output_language}.\n"
-                    f"- Desired length: {request.length.title()} ({length_map[length_key]}).\n"
-                    f"- Writing tone: {request.writing_tone}.\n"
-                    f"- Voice: {request.voice}.\n"
-                    f"- Reply to the following message: \"{request.user_input}\".\n"
-                    f"- Return only the reply message text (no greetings, no signatures, no extra commentary).\n"
+                    "Return ONLY JSON (no code fences, no extra text). "
+                    'JSON Format: {"response": "string"}. '
+                    f"Write a text message reply in {request.output_language} with {request.length.title()} length ({length_map[length_key]}), "
+                    f"tone {request.writing_tone}, voice {request.voice}. "
+                    f"Reply to: \"{request.user_input}\"."
                 )
 
         # Debug: optionally log a shortened prompt
@@ -468,8 +456,27 @@ async def content_generate(request: ContentGenerationRequest):
         except Exception:
             pass
 
-        generated = await call_gemini_api(prompt, max_tokens=1000, temperature=0.7)
-        return APIResponse(status="success", input=request.user_input, output=generated)
+        raw = await call_gemini_api(
+            prompt,
+            max_tokens=1000,
+            temperature=0.7,
+            response_mime_type="application/json",
+        )
+        try:
+            data = json.loads(raw)
+            # For text messages, ensure no subject is propagated
+            if text_type_key == "text message":
+                subject = ""
+                body = str(data.get("body", ""))
+            else:
+                subject = str(data.get("subject", ""))
+                body = str(data.get("body", ""))
+        except Exception:
+            # Fallback: attempt to split plain text format "Subject:...\nBody:\n..."
+            subject = ""
+            body = raw.strip()
+
+        return APIResponse(status="success", input=request.user_input, output={"subject": subject, "body": body})
     except HTTPException:
         raise
     except Exception as e:
