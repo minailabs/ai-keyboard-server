@@ -74,6 +74,14 @@ class ChatAIRequest(BaseModel):
     history_messages: List[HistoryMessage]
     new_message: str
 
+class ContentGenerationRequest(BaseModel):
+    user_input: str
+    text_type: str  # "email" | "text message"
+    output_language: str
+    length: str  # "short" | "medium" | "long"
+    writing_tone: str
+    voice: str
+
 # List of supported languages for translation
 supported_languages = {
     "Afrikaans": "af", "Arabic": "ar", "Bengali": "bn", "Chinese (Simplified)": "zh-CN",
@@ -362,6 +370,60 @@ async def chat_ai(request: ChatAIRequest):
         traceback.print_exc()
         print(f"Chat AI failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Chat AI failed: {str(e)}")
+
+@app.post("/content-generate", response_model=APIResponse)
+async def content_generate(request: ContentGenerationRequest):
+    """Generate content (email or text message) based on user instructions."""
+    try:
+        if request.output_language not in supported_languages:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid language. Please choose from: {', '.join(supported_languages.keys())}"
+            )
+
+        text_type_key = request.text_type.lower().strip()
+        if text_type_key not in {"email", "text message"}:
+            raise HTTPException(status_code=400, detail="text_type must be 'email' or 'text message'")
+
+        length_map = {
+            "short": "1-2 paragraphs" if text_type_key == "email" else "1-3 sentences",
+            "medium": "3-4 paragraphs" if text_type_key == "email" else "3-5 sentences",
+            "long": "5 or more paragraphs" if text_type_key == "email" else "6-8 sentences",
+        }
+        length_key = request.length.lower().strip()
+        if length_key not in length_map:
+            raise HTTPException(status_code=400, detail="Invalid length. Use one of: short, medium, long")
+
+        if text_type_key == "email":
+            prompt = (
+                f"You are composing a new email. Follow these rules strictly.\n"
+                f"- Write in: {request.output_language}.\n"
+                f"- Desired length: {request.length.title()} ({length_map[length_key]}).\n"
+                f"- Writing tone: {request.writing_tone}.\n"
+                f"- Voice: {request.voice}.\n"
+                f"- Base the content on: \"{request.user_input}\".\n"
+                f"- Return only the email content with this exact structure (no extra commentary):\n"
+                f"Subject: <concise subject>\n"
+                f"Body:\n<email body>\n"
+            )
+        else:
+            # text message
+            prompt = (
+                f"You are composing a text message. Follow these rules strictly.\n"
+                f"- Write in: {request.output_language}.\n"
+                f"- Desired length: {request.length.title()} ({length_map[length_key]}).\n"
+                f"- Writing tone: {request.writing_tone}.\n"
+                f"- Voice: {request.voice}.\n"
+                f"- Base the content on: \"{request.user_input}\".\n"
+                f"- Return only the message text (no greetings, no signatures, no extra commentary).\n"
+            )
+
+        generated = await call_gemini_api(prompt, max_tokens=1000, temperature=0.7)
+        return APIResponse(status="success", input=request.user_input, output=generated)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Content generation failed: {str(e)}")
 
 @app.get("/health")
 async def health_check():
