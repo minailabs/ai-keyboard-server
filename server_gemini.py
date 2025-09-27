@@ -81,6 +81,7 @@ class ContentGenerationRequest(BaseModel):
     length: str  # "short" | "medium" | "long"
     writing_tone: str
     voice: str
+    text_action: str  # "new" | "reply"
 
 # List of supported languages for translation
 supported_languages = {
@@ -396,6 +397,11 @@ async def content_generate(request: ContentGenerationRequest):
             print(f"/content-generate invalid text_type: {request.text_type}")
             raise HTTPException(status_code=400, detail="text_type must be 'email' or 'text message'")
 
+        text_action_key = request.text_action.lower().strip()
+        if text_action_key not in {"new", "reply"}:
+            print(f"/content-generate invalid text_action: {request.text_action}")
+            raise HTTPException(status_code=400, detail="text_action must be 'new' or 'reply'")
+
         length_map = {
             "short": "1-2 paragraphs" if text_type_key == "email" else "1-3 sentences",
             "medium": "3-4 paragraphs" if text_type_key == "email" else "3-5 sentences",
@@ -407,28 +413,53 @@ async def content_generate(request: ContentGenerationRequest):
             raise HTTPException(status_code=400, detail="Invalid length. Use one of: short, medium, long")
 
         if text_type_key == "email":
-            prompt = (
-                f"You are composing a new email. Follow these rules strictly.\n"
-                f"- Write in: {request.output_language}.\n"
-                f"- Desired length: {request.length.title()} ({length_map[length_key]}).\n"
-                f"- Writing tone: {request.writing_tone}.\n"
-                f"- Voice: {request.voice}.\n"
-                f"- Base the content on: \"{request.user_input}\".\n"
-                f"- Return only the email content with this exact structure (no extra commentary):\n"
-                f"Subject: <concise subject>\n"
-                f"Body:\n<email body>\n"
-            )
+            if text_action_key == "new":
+                prompt = (
+                    f"You are composing a new email. Follow these rules strictly.\n"
+                    f"- Write in: {request.output_language}.\n"
+                    f"- Desired length: {request.length.title()} ({length_map[length_key]}).\n"
+                    f"- Writing tone: {request.writing_tone}.\n"
+                    f"- Voice: {request.voice}.\n"
+                    f"- Base the content on: \"{request.user_input}\".\n"
+                    f"- Return only the email content with this exact structure (no extra commentary):\n"
+                    f"Subject: <concise subject>\n"
+                    f"Body:\n<email body>\n"
+                )
+            else:
+                # reply
+                prompt = (
+                    f"You are replying to an email. Follow these rules strictly.\n"
+                    f"- Write in: {request.output_language}.\n"
+                    f"- Desired length: {request.length.title()} ({length_map[length_key]}).\n"
+                    f"- Writing tone: {request.writing_tone}.\n"
+                    f"- Voice: {request.voice}.\n"
+                    f"- Reply to the following message: \"{request.user_input}\".\n"
+                    f"- Return only the reply with this exact structure (no extra commentary):\n"
+                    f"Subject: Re: <concise subject>\n"
+                    f"Body:\n<email body>\n"
+                )
         else:
             # text message
-            prompt = (
-                f"You are composing a text message. Follow these rules strictly.\n"
-                f"- Write in: {request.output_language}.\n"
-                f"- Desired length: {request.length.title()} ({length_map[length_key]}).\n"
-                f"- Writing tone: {request.writing_tone}.\n"
-                f"- Voice: {request.voice}.\n"
-                f"- Base the content on: \"{request.user_input}\".\n"
-                f"- Return only the message text (no greetings, no signatures, no extra commentary).\n"
-            )
+            if text_action_key == "new":
+                prompt = (
+                    f"You are composing a text message. Follow these rules strictly.\n"
+                    f"- Write in: {request.output_language}.\n"
+                    f"- Desired length: {request.length.title()} ({length_map[length_key]}).\n"
+                    f"- Writing tone: {request.writing_tone}.\n"
+                    f"- Voice: {request.voice}.\n"
+                    f"- Base the content on: \"{request.user_input}\".\n"
+                    f"- Return only the message text (no greetings, no signatures, no extra commentary).\n"
+                )
+            else:
+                prompt = (
+                    f"You are replying to a text message. Follow these rules strictly.\n"
+                    f"- Write in: {request.output_language}.\n"
+                    f"- Desired length: {request.length.title()} ({length_map[length_key]}).\n"
+                    f"- Writing tone: {request.writing_tone}.\n"
+                    f"- Voice: {request.voice}.\n"
+                    f"- Reply to the following message: \"{request.user_input}\".\n"
+                    f"- Return only the reply message text (no greetings, no signatures, no extra commentary).\n"
+                )
 
         # Debug: optionally log a shortened prompt
         try:
