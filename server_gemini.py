@@ -415,38 +415,42 @@ async def content_generate(request: ContentGenerationRequest):
         if text_type_key == "email":
             if text_action_key == "new":
                 prompt = (
-                    "Return ONLY JSON (no code fences, no extra text). "
-                    'JSON Format: {"subject": "string", "body": "string"}. '\
+                    
                     f"Write an email in {request.output_language} with {request.length.title()} length ({length_map[length_key]}), "
                     f"tone {request.writing_tone}, voice {request.voice}. "
                     f"Base the content on: \"{request.user_input}\"."
+                    "Return ONLY JSON (no code fences, no extra text). "
+                    'JSON Format: {"subject": "string", "body": "string"}. '\
                 )
             else:
                 # reply
                 prompt = (
-                    "Return ONLY JSON (no code fences, no extra text). "
-                    'JSON Format: {"subject": "string", "body": "string"}. '
+                    
                     f"Write an email reply in {request.output_language} with {request.length.title()} length ({length_map[length_key]}), "
                     f"tone {request.writing_tone}, voice {request.voice}. "
                     f"Reply to: \"{request.user_input}\"."
+                    "Return ONLY JSON (no code fences, no extra text). "
+                    'JSON Format: {"subject": "string", "body": "string"}. '
                 )
         else:
             # text message
             if text_action_key == "new":
                 prompt = (
-                    "Return ONLY JSON (no code fences, no extra text). "
-                    'JSON Format: {"response": "string"}. '
+                    
                     f"Write a text message in {request.output_language} with {request.length.title()} length ({length_map[length_key]}), "
                     f"tone {request.writing_tone}, voice {request.voice}. "
                     f"Base the content on: \"{request.user_input}\"."
+                    "Return ONLY JSON (no code fences, no extra text). "
+                    'JSON Format: {"response": "string"}. '
                 )
             else:
                 prompt = (
-                    "Return ONLY JSON (no code fences, no extra text). "
-                    'JSON Format: {"response": "string"}. '
+                    
                     f"Write a text message reply in {request.output_language} with {request.length.title()} length ({length_map[length_key]}), "
                     f"tone {request.writing_tone}, voice {request.voice}. "
                     f"Reply to: \"{request.user_input}\"."
+                    "Return ONLY JSON (no code fences, no extra text). "
+                    'JSON Format: {"response": "string"}. '
                 )
 
         # Debug: optionally log a shortened prompt
@@ -458,7 +462,7 @@ async def content_generate(request: ContentGenerationRequest):
 
         raw = await call_gemini_api(
             prompt,
-            max_tokens=1000,
+            max_tokens=2000,
             temperature=0.7,
             response_mime_type="application/json",
         )
