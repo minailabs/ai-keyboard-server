@@ -470,17 +470,18 @@ async def content_generate(request: ContentGenerationRequest):
             data = json.loads(raw)
             # For text messages, ensure no subject is propagated
             if text_type_key == "text message":
-                subject = ""
-                body = str(data.get("body", ""))
+                response = str(data.get("response", ""))
+                return APIResponse(status="success", input=request.user_input, output={"response": response})
             else:
                 subject = str(data.get("subject", ""))
                 body = str(data.get("body", ""))
+                return APIResponse(status="success", input=request.user_input, output={"subject": subject, "body": body})
         except Exception:
             # Fallback: attempt to split plain text format "Subject:...\nBody:\n..."
             subject = ""
             body = raw.strip()
 
-        return APIResponse(status="success", input=request.user_input, output={"subject": subject, "body": body})
+        raise HTTPException(status_code=500, detail=f"Content generation failed: Parsing JSON failed")
     except HTTPException:
         raise
     except Exception as e:
